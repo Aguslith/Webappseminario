@@ -65,9 +65,7 @@ export default function Recipes({ userProfile, onAddRecipeToLog }: RecipesProps)
   // Meal logging state
   const [showMealModal, setShowMealModal] = useState(false);
   const [isAddingRecipe, setIsAddingRecipe] = useState(false);
-  const [addSuccess, setAddSuccess] = useState(false);
-
-  const mockRecipes: Recipe[] = [
+  const [addSuccess, setAddSuccess] = useState(false);  const mockRecipes: Recipe[] = [
     {
       id: 'reg-1',
       title: 'Polenta Cremosa con Tuco',
@@ -81,7 +79,7 @@ export default function Recipes({ userProfile, onAddRecipeToLog }: RecipesProps)
       ingredients: ['polenta', 'tomate', 'carne', 'tuco', 'queso'],
       ingredientsList: ['1 taza de polenta rápida', '3 tazas de caldo de verduras o leche', '1/2 taza de queso rallado', '250g de carne picada', '1 lata de puré de tomate', '1 cebolla pequeña', '1 diente de ajo', 'Sal, pimienta y orégano al gusto'],
       description: 'Un clásico reconfortante de la cocina argentina. Ideal para días frescos, servido con tuco de tomate y carne picada, coronado con queso rallado.',
-      img: 'https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?w=800&auto=format&fit=crop&q=80',
+      img: '/recipes/polenta_tuco.png',
       steps: [
         'Picar la cebolla y el ajo, y saltearlos en una sartén con un chorrito de aceite.',
         'Agregar la carne picada y cocinar hasta que cambie de color. Incorporar el puré de tomate, condimentar y cocinar a fuego lento por 15 minutos.',
@@ -104,7 +102,7 @@ export default function Recipes({ userProfile, onAddRecipeToLog }: RecipesProps)
       ingredients: ['atun', 'arroz', 'zanahoria', 'huevo', 'mayonesa'],
       ingredientsList: ['1 lata de atún al natural', '1 taza de arroz hervido (frío)', '1 zanahoria mediana rallada', '2 huevos duros picados', '2 cucharadas de mayonesa', 'Sal y limón al gusto'],
       description: 'Una opción fresca, proteica y súper accesible para el almuerzo. Usa zanahoria rallada para mayor textura y color.',
-      img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80',
+      img: '/recipes/ensalada_atun.png',
       steps: [
         'Hervir el arroz en abundante agua con sal, colar y dejar enfriar.',
         'Rallar la zanahoria fina y picar los huevos duros.',
@@ -127,7 +125,7 @@ export default function Recipes({ userProfile, onAddRecipeToLog }: RecipesProps)
       ingredients: ['atun', 'cebolla', 'huevo', 'masa', 'tarta', 'morron'],
       ingredientsList: ['2 latas de atún al natural', '2 cebollas grandes picadas', '1/2 morrón rojo picado', '2 huevos duros picados', '1 disco de masa para tarta', 'Sal, pimienta y orégano'],
       description: 'Una tarta clásica, sabrosa y muy económica. El relleno de atún salteado con cebollas y huevo duro en una masa crocante es infalible.',
-      img: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&auto=format&fit=crop&q=80',
+      img: '/recipes/tarta_atun.png',
       steps: [
         'Rehogar las cebollas y el morrón picados en una sartén con aceite hasta que estén tiernos.',
         'Retirar del fuego y mezclar con el atún escurrido y desmenuzado, y los huevos picados. Condimentar al gusto.',
@@ -151,7 +149,7 @@ export default function Recipes({ userProfile, onAddRecipeToLog }: RecipesProps)
       ingredients: ['atun', 'cebolla', 'morron', 'tapas', 'empanada', 'huevo'],
       ingredientsList: ['1 lata de atún al natural', '1 cebolla grande picada', '1/2 morrón verde picado', '1 huevo duro picado', '12 tapas de empanadas para horno', 'Sal, pimienta y comino'],
       description: 'Empanadas crujientes rellenas de un sofrito jugoso de atún, cebolla y morrón. Un clásico de vigilia y delicias rápidas en cualquier mesa argentina.',
-      img: 'https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?w=800&auto=format&fit=crop&q=80',
+      img: '/recipes/empanadas_atun.png',
       steps: [
         'Preparar el sofrito salteando la cebolla y el morrón en una sartén.',
         'Apagar el fuego, sumar el atún bien escurrido y mezclar. Agregar el huevo picado y condimentar.',
@@ -174,7 +172,7 @@ export default function Recipes({ userProfile, onAddRecipeToLog }: RecipesProps)
       ingredients: ['carne', 'huevo', 'pan', 'papa', 'leche', 'milanesa'],
       ingredientsList: ['400g de carne para milanesas (bola de lomo o nalga)', '2 huevos batidos con ajo y perejil', '1 taza de pan rallado', '4 papas medianas', '50g de manteca', '1/2 taza de leche tibia', 'Sal y pimienta'],
       description: 'El plato preferido de los argentinos: milanesa de ternera crujiente acompañada de un puré de papas extra cremoso y mantecoso.',
-      img: 'https://images.unsplash.com/photo-1599921841143-819065a55cc6?w=800&auto=format&fit=crop&q=80',
+      img: '/recipes/milanesa_pure.png',
       steps: [
         'Pasar los bifes de carne por el huevo batido condimentado, y luego rebozarlos bien con el pan rallado presionando con los dedos.',
         'Hervir las papas peladas y cortadas en cubos en agua con sal hasta que estén tiernas.',
@@ -197,7 +195,7 @@ export default function Recipes({ userProfile, onAddRecipeToLog }: RecipesProps)
       ingredients: ['papa', 'huevo', 'cebolla', 'aceite'],
       ingredientsList: ['3 papas grandes', '1 cebolla picada', '4 huevos medianos', 'Aceite para freír', 'Sal al gusto'],
       description: 'Una tortilla jugosa y dorada, hecha con papas, cebolla y huevos. Simple, económica y extremadamente sabrosa.',
-      img: 'https://images.unsplash.com/photo-1614707267537-b85acf00c4b8?w=800&auto=format&fit=crop&q=80',
+      img: '/recipes/tortilla_papas.png',
       steps: [
         'Pelar las papas y cortarlas en rodajas finas o pequeños cubos. Picar la cebolla.',
         'Freír las papas en abundante aceite a fuego medio para que se cocinen sin dorarse demasiado (confitar). A mitad de cocción sumar la cebolla.',
@@ -221,7 +219,7 @@ export default function Recipes({ userProfile, onAddRecipeToLog }: RecipesProps)
       ingredients: ['fideos', 'atun', 'tomate', 'queso', 'ajo'],
       ingredientsList: ['200g de fideos secos (tallarines o tirabuzones)', '1 lata de atún al natural', '1 lata de tomates cubeteados o salsa de tomate', '1 diente de ajo picado', 'Queso rallado opcional', 'Sal, pimienta y aceite de oliva'],
       description: 'La solución perfecta para comer rico, sano y súper rápido. Pasta al dente salteada con atún desmenuzado en salsa de tomate y ajo.',
-      img: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80',
+      img: '/recipes/fideos_atun.png',
       steps: [
         'Cocinar los fideos en una olla con abundante agua hirviendo y sal según el tiempo del paquete.',
         'Mientras tanto, calentar aceite de oliva en una sartén y dorar el ajo picado.',
@@ -243,8 +241,8 @@ export default function Recipes({ userProfile, onAddRecipeToLog }: RecipesProps)
       source: 'Puli Cocina',
       ingredients: ['polenta', 'queso', 'crema', 'champiñones', 'manteca'],
       ingredientsList: ['1 taza de polenta rápida', '3 tazas de caldo de verduras caliente', '100g de champiñones fileteados', '1/2 taza de crema de leche o leche', '50g de queso parmesano rallado', '1 cucharada de manteca'],
-      description: 'Una reinterpretación cremosa y elegante de la polenta rápida, cocida con caldo y terminada con queso parmesano, crema y champiñones salteados.',
-      img: 'https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=800&auto=format&fit=crop&q=80',
+      description: 'Una reinterpreación cremosa y elegante de la polenta rápida, cocida con caldo y terminada con queso parmesano, crema y champiñones salteados.',
+      img: '/recipes/risotto_polenta.png',
       steps: [
         'En una sartén pequeña, saltear los champiñones fileteados en un poco de manteca o aceite hasta dorar.',
         'En una olla mediana, llevar el caldo de verduras a ebullición.',

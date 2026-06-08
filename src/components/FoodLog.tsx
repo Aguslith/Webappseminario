@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
@@ -21,8 +21,9 @@ import {
 import { playClick, playSuccess, playError } from '../lib/sounds';
 import { cn } from '../lib/utils';
 import { db, auth } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, setDoc, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { FoodEntry } from '../App';
+import { searchUSDAFood, getMacroInfo } from '../lib/usda';
 
 interface FoodLogProps {
   userProfile: any;
@@ -37,6 +38,10 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
   const [selectedMeal, setSelectedMeal] = useState('Desayuno');
   const [showAddForm, setShowAddForm] = useState(false);
   
+  // USDA search states
+  const [usdaResults, setUsdaResults] = useState<any[]>([]);
+  const [isLoadingUSDA, setIsLoadingUSDA] = useState(false);
+
   // New food form state
   const [newFood, setNewFood] = useState({
     name: '',
@@ -45,6 +50,40 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
     carbs: '',
     fats: ''
   });
+
+  // Debounced search for USDA API
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setUsdaResults([]);
+      return;
+    }
+
+    const delayDebounce = setTimeout(async () => {
+      setIsLoadingUSDA(true);
+      try {
+        const results = await searchUSDAFood(searchQuery);
+        const mapped = results.map(food => {
+          const macros = getMacroInfo(food);
+          return {
+            id: `usda_${food.fdcId}`,
+            name: food.description.toLowerCase(),
+            calories: macros.calories,
+            protein: macros.protein,
+            carbs: macros.carbs,
+            fats: macros.fats,
+            isUSDA: true
+          };
+        });
+        setUsdaResults(mapped);
+      } catch (error) {
+        console.error("Error searching USDA:", error);
+      } finally {
+        setIsLoadingUSDA(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
 
   const meals = [
     { id: 'Desayuno', icon: '🌅', color: 'bg-orange-500' },
@@ -151,14 +190,24 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
     }
 
     try {
-      await addDoc(collection(db, 'foods'), {
+      const docId = newFoodItem.name
+        .toLowerCase()
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+
+      await setDoc(doc(db, 'foods', docId), {
         ...newFoodItem,
+        category: 'Personalizado',
         createdAt: serverTimestamp()
       });
       playSuccess();
       setShowAddForm(false);
       setNewFood({ name: '', calories: '', protein: '', carbs: '', fats: '' });
     } catch (e) {
+      console.error("Error registering food in Firestore:", e);
       playError();
     }
   };
@@ -242,33 +291,104 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="space-y-2 mb-6"
+                  className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-1 no-scrollbar text-left"
                 >
-                  {filteredFoods.length > 0 ? (
-                    filteredFoods.map(food => (
-                      <button 
-                        key={food.id}
-                        onClick={() => addFoodToLog(food)}
-                        className="w-full flex items-center justify-between p-4 bg-primary/5 rounded-2xl hover:bg-primary/10 transition-all text-left group border border-transparent hover:border-primary/20"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                            <Plus size={20} className="text-primary" />
+                  {/* Local Foods Database */}
+                  {filteredFoods.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Mis Alimentos / Base de Datos</p>
+                      {filteredFoods.map(food => (
+                        <button 
+                          key={food.id}
+                          onClick={() => addFoodToLog(food)}
+                          className="w-full flex items-center justify-between p-4 bg-primary/5 rounded-2xl hover:bg-primary/10 transition-all text-left group border border-transparent hover:border-primary/20 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                              <Plus size={20} className="text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm sm:text-base capitalize">{food.name.replace(/_/g, ' ')}</p>
+                              <p className="text-[10px] sm:text-xs text-on-surface-variant uppercase tracking-widest font-black">{food.calories} kcal • {food.protein}g P • {food.carbs}g C • {food.fats}g G</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-bold text-sm sm:text-base">{food.name}</p>
-                            <p className="text-[10px] sm:text-xs text-on-surface-variant uppercase tracking-widest font-black">{food.calories} kcal • {food.protein}g Proteína</p>
+                          <ChevronRight size={20} className="text-primary opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* USDA global API results */}
+                  {isLoadingUSDA ? (
+                    <div className="flex items-center justify-center py-4 gap-2 text-sm text-on-surface-variant">
+                      <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                      <span>Buscando en base de datos global...</span>
+                    </div>
+                  ) : usdaResults.length > 0 ? (
+                    <div className="space-y-2 pt-2 border-t border-surface-container-high/50">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-secondary mb-1">Búsqueda Global (API USDA)</p>
+                      {usdaResults.map(food => (
+                        <button 
+                          key={food.id}
+                          onClick={async () => {
+                            await addFoodToLog(food);
+                            // Auto save imported food to Firestore user collection Foods
+                            const isAdmin = localStorage.getItem('adminLoggedIn') === 'true';
+                            if (!isAdmin && auth.currentUser) {
+                              try {
+                                const docId = food.name
+                                  .toLowerCase()
+                                  .trim()
+                                  .normalize("NFD")
+                                  .replace(/[\u0300-\u036f]/g, "")
+                                  .replace(/[^a-z0-9]+/g, '_')
+                                  .replace(/^_+|_+$/g, '');
+                                await setDoc(doc(db, 'foods', docId), {
+                                  name: food.name.toLowerCase(),
+                                  calories: food.calories,
+                                  protein: food.protein,
+                                  carbs: food.carbs,
+                                  fats: food.fats,
+                                  category: 'Importado',
+                                  createdAt: serverTimestamp()
+                                });
+                              } catch (e) {
+                                console.error("Error auto-saving imported food:", e);
+                              }
+                            }
+                          }}
+                          className="w-full flex items-center justify-between p-4 bg-secondary/5 rounded-2xl hover:bg-secondary/10 transition-all text-left group border border-transparent hover:border-secondary/20 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                              <Globe size={20} className="text-secondary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-sm sm:text-base truncate">{food.name}</p>
+                              <p className="text-[10px] sm:text-xs text-on-surface-variant uppercase tracking-widest font-black">{food.calories} kcal • {food.protein}g P • {food.carbs}g C • {food.fats}g G</p>
+                            </div>
                           </div>
-                        </div>
-                        <ChevronRight size={20} className="text-primary opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
-                      </button>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center bg-surface-container-low rounded-3xl border-2 border-dashed border-surface-container-high">
+                          <ChevronRight size={20} className="text-secondary opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {filteredFoods.length === 0 && usdaResults.length === 0 && !isLoadingUSDA && (
+                    <div className="p-8 text-center bg-surface-container-low rounded-3xl border-2 border-dashed border-surface-container-high w-full">
                       <p className="text-sm font-bold text-on-surface-variant mb-4">No encontramos "{searchQuery}"</p>
                       <button 
-                        onClick={() => setShowAddForm(true)}
-                        className="bg-primary text-white px-6 py-3 rounded-xl font-bold text-xs hover:opacity-90 transition-opacity"
+                        onClick={() => {
+                          setNewFood({
+                            name: searchQuery,
+                            calories: '',
+                            protein: '',
+                            carbs: '',
+                            fats: ''
+                          });
+                          setShowAddForm(true);
+                        }}
+                        className="bg-primary text-white px-6 py-3 rounded-xl font-bold text-xs hover:opacity-90 transition-opacity cursor-pointer"
                       >
                         Registrar Alimento Nuevo
                       </button>

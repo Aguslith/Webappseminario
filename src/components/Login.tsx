@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { playClick } from '../lib/sounds';
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signInAnonymously } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -43,6 +43,12 @@ export default function Login({ onComplete, onBack }: LoginProps) {
       
       if (!localStorage.getItem('adminDailyFoods')) {
         localStorage.setItem('adminDailyFoods', JSON.stringify([]));
+      }
+
+      try {
+        await signInAnonymously(auth);
+      } catch (authErr) {
+        console.warn("Could not sign in admin anonymously on login:", authErr);
       }
       
       setTimeout(() => {

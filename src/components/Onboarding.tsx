@@ -5,7 +5,7 @@ import { playClick } from '../lib/sounds';
 import { cn } from '../lib/utils';
 
 //firebase
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -89,16 +89,17 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     playClick();
 
     try {
-      let user = auth.currentUser;
-      
-      if (!user) {
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          formData.email,
-          formData.password
-        );
-        user = userCredential.user;
+      // If there is an active session (e.g. anonymous admin), sign out first to allow new user registration
+      if (auth.currentUser) {
+        await signOut(auth);
       }
+
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+      const user = userCredential.user;
 
       await setDoc(doc(db, "usuarios", user.uid), {
         nombre: formData.nombre,

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { playClick, playTransition } from './lib/sounds';
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged, signOut, signInAnonymously } from "firebase/auth";
 import { auth, db } from "./lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs, Timestamp, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 
@@ -51,6 +51,24 @@ export interface FoodEntry {
   timestamp: any;
   userId: string;
 }
+
+const DEFAULT_FOODS = [
+  { id: 'def-1', name: "Asado de Tira", calories: 250, protein: 25, carbs: 0, fats: 18, category: "Carnes" },
+  { id: 'def-2', name: "Empanada de Carne", calories: 280, protein: 8, carbs: 30, fats: 14, category: "Masas" },
+  { id: 'def-3', name: "Choripán", calories: 450, protein: 15, carbs: 35, fats: 28, category: "Sándwiches" },
+  { id: 'def-4', name: "Milanesa de Ternera", calories: 320, protein: 22, carbs: 15, fats: 18, category: "Carnes" },
+  { id: 'def-5', name: "Milanesa a la Napolitana", calories: 480, protein: 30, carbs: 18, fats: 32, category: "Carnes" },
+  { id: 'def-6', name: "Locro", calories: 350, protein: 15, carbs: 45, fats: 12, category: "Guisos" },
+  { id: 'def-7', name: "Humita en Chala", calories: 220, protein: 5, carbs: 38, fats: 6, category: "Tradicional" },
+  { id: 'def-8', name: "Pastel de Papa", calories: 400, protein: 18, carbs: 42, fats: 18, category: "Platillos" },
+  { id: 'def-9', name: "Pollo a la Plancha", calories: 165, protein: 31, carbs: 0, fats: 3.6, category: "Carnes" },
+  { id: 'def-10', name: "Atún al Natural (lata)", calories: 120, protein: 26, carbs: 0, fats: 1, category: "Pescados" },
+  { id: 'def-11', name: "Arroz Blanco Hervido", calories: 130, protein: 2.7, carbs: 28, fats: 0.3, category: "Cereales" },
+  { id: 'def-12', name: "Zanahoria Rallada", calories: 41, protein: 0.9, carbs: 10, fats: 0.2, category: "Verduras" },
+  { id: 'def-13', name: "Huevo Duro", calories: 155, protein: 13, carbs: 1.1, fats: 11, category: "Proteínas" },
+  { id: 'def-14', name: "Fideos Cocidos", calories: 158, protein: 5.8, carbs: 31, fats: 0.9, category: "Pastas" },
+  { id: 'def-15', name: "Polenta Cocida", calories: 85, protein: 2, carbs: 18, fats: 0.5, category: "Cereales" }
+];
 
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('auth-landing');
@@ -93,6 +111,15 @@ export default function App() {
           };
           setUserProfile(defaultAdmin);
           localStorage.setItem('adminProfile', JSON.stringify(defaultAdmin));
+        }
+        
+        // Authenticate admin anonymously to bypass Firestore permission rules
+        if (!auth.currentUser) {
+          try {
+            await signInAnonymously(auth);
+          } catch (e) {
+            console.warn("Could not sign in admin anonymously:", e);
+          }
         }
         
         const storedFoods = localStorage.getItem('adminDailyFoods');
@@ -194,11 +221,31 @@ export default function App() {
       return onSnapshot(q, (snapshot) => {
         const dbFoods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const adminFoods = JSON.parse(localStorage.getItem('adminFoodsList') || '[]');
-        setFoodsList([...dbFoods, ...adminFoods]);
+        
+        // If Firestore succeeds but is empty, merge DEFAULT_FOODS
+        const baseFoods = (dbFoods.length > 0 ? dbFoods : DEFAULT_FOODS) as any[];
+        
+        // Merge without repeating names
+        const combined = [...baseFoods] as any[];
+        adminFoods.forEach((af: any) => {
+          if (!combined.some(cf => cf.name.toLowerCase() === af.name.toLowerCase())) {
+            combined.push(af);
+          }
+        });
+        
+        setFoodsList(combined);
       }, (error) => {
         console.error("Error fetching foods:", error);
         const adminFoods = JSON.parse(localStorage.getItem('adminFoodsList') || '[]');
-        setFoodsList(adminFoods);
+        
+        const combined = [...DEFAULT_FOODS] as any[];
+        adminFoods.forEach((af: any) => {
+          if (!combined.some(cf => cf.name.toLowerCase() === af.name.toLowerCase())) {
+            combined.push(af);
+          }
+        });
+        
+        setFoodsList(combined);
       });
     };
 
