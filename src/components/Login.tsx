@@ -56,13 +56,18 @@ export default function Login({ onComplete, onBack }: LoginProps) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Obtener datos adicionales de Firestore
-      const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-      
-      if (userDoc.exists()) {
-        onComplete(userDoc.data());
-      } else {
-        // Si no hay documento en firestore, al menos pasamos el email
+      try {
+        // Obtener datos adicionales de Firestore
+        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+        
+        if (userDoc.exists()) {
+          onComplete(userDoc.data());
+        } else {
+          // Si no hay documento en firestore, al menos pasamos el email
+          onComplete({ email: user.email, nombre: 'Usuario' });
+        }
+      } catch (dbErr) {
+        console.error("Error fetching user from db:", dbErr);
         onComplete({ email: user.email, nombre: 'Usuario' });
       }
     } catch (err: any) {

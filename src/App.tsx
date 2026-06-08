@@ -26,7 +26,7 @@ import { cn } from './lib/utils';
 import { playClick, playTransition } from './lib/sounds';
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "./lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, Timestamp, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, Timestamp, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Views
 import Onboarding from './components/Onboarding';
@@ -114,12 +114,18 @@ export default function App() {
       // 2. Normal User Flow
       if (user) {
         // Fetch Profile
-        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
-        if (userDoc.exists()) {
-          const profileData = { ...userDoc.data(), uid: user.uid } as any;
-          setUserProfile(profileData);
-          setCurrentView('dashboard');
-        } else {
+        try {
+          const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+          if (userDoc.exists()) {
+            const profileData = { ...userDoc.data(), uid: user.uid } as any;
+            setUserProfile(profileData);
+            setCurrentView('dashboard');
+          } else {
+            setCurrentView('onboarding');
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+          // Fallback if db fails
           setCurrentView('onboarding');
         }
 
@@ -234,6 +240,57 @@ export default function App() {
     } catch (error) {
       console.error("Error signing out", error);
     }
+  };
+
+  const addRecipeToLog = async (
+    recipeName: string, 
+    calories: number, 
+    protein: number, 
+    carbs: number, 
+    fats: number, 
+    mealType: string
+  ) => {
+    const isAdmin = localStorage.getItem('adminLoggedIn') === 'true';
+    if (!auth.currentUser && !isAdmin) return;
+
+    if (isAdmin) {
+      const storedFoods = localStorage.getItem('adminDailyFoods');
+      let currentFoods: FoodEntry[] = [];
+      if (storedFoods) {
+        try {
+          currentFoods = JSON.parse(storedFoods);
+        } catch (e) {}
+      }
+      const newEntry: FoodEntry = {
+        id: 'admin_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        name: recipeName,
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fats: fats,
+        mealType: mealType,
+        timestamp: {
+          toDate: () => new Date(),
+        },
+        userId: 'admin'
+      };
+      const updatedFoods = [...currentFoods, newEntry];
+      localStorage.setItem('adminDailyFoods', JSON.stringify(updatedFoods));
+      window.dispatchEvent(new Event('admin-data-changed'));
+      return;
+    }
+
+    // Normal User Flow
+    await addDoc(collection(db, 'regimen_alimenticio'), {
+      userId: auth.currentUser?.uid,
+      name: recipeName,
+      calories: calories,
+      protein: protein,
+      carbs: carbs,
+      fats: fats,
+      mealType: mealType,
+      timestamp: serverTimestamp()
+    });
   };
 
   const navItems = [
@@ -406,7 +463,7 @@ export default function App() {
                   )}
                   <Onboarding onComplete={(data) => {
                     setUserProfile({ ...data, uid: data.uid || auth.currentUser?.uid });
-                    handleViewChange('dashboard');
+                    setCurrentView('dashboard');
                   }} />
                 </div>
               )}
@@ -424,7 +481,7 @@ export default function App() {
                   foodsList={foodsList}
                 />
               )}
-              {currentView === 'recipes' && <Recipes />}
+              {currentView === 'recipes' && <Recipes userProfile={userProfile} onAddRecipeToLog={addRecipeToLog} />}
               {currentView === 'support' && <Support />}
               {currentView === 'profile' && userProfile && (
                 <Profile 

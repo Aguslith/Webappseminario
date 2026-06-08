@@ -89,13 +89,16 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     playClick();
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-
-      const user = userCredential.user;
+      let user = auth.currentUser;
+      
+      if (!user) {
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password
+        );
+        user = userCredential.user;
+      }
 
       await setDoc(doc(db, "usuarios", user.uid), {
         nombre: formData.nombre,
@@ -112,7 +115,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
     } catch (error) {
       console.error(error);
-      alert("Error al registrarse");
+      alert("Error al registrarse o guardar perfil");
     }
   }}
 >
