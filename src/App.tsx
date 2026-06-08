@@ -57,6 +57,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [dailyFoods, setDailyFoods] = useState<FoodEntry[]>([]);
+  const [foodsList, setFoodsList] = useState<any[]>([]);
   const [userProfile, setUserProfile] = useState<{
     nombre: string;
     apellido: string;
@@ -70,7 +71,47 @@ export default function App() {
   } | null>(null);
 
   useEffect(() => {
+    let unsubscribeSnapshot: (() => void) | null = null;
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      // 1. Check if admin is logged in
+      if (localStorage.getItem('adminLoggedIn') === 'true') {
+        const cachedProfile = localStorage.getItem('adminProfile');
+        if (cachedProfile) {
+          setUserProfile(JSON.parse(cachedProfile));
+        } else {
+          const defaultAdmin = {
+            uid: 'admin',
+            nombre: 'Administrador',
+            apellido: 'Sistema',
+            email: 'admin@admin.com',
+            edad: '30',
+            peso: '80',
+            altura: '180',
+            pesoIdeal: '75',
+            alergias: [],
+          };
+          setUserProfile(defaultAdmin);
+          localStorage.setItem('adminProfile', JSON.stringify(defaultAdmin));
+        }
+        
+        const storedFoods = localStorage.getItem('adminDailyFoods');
+        if (storedFoods) {
+          try {
+            setDailyFoods(JSON.parse(storedFoods));
+          } catch (e) {
+            setDailyFoods([]);
+          }
+        } else {
+          setDailyFoods([]);
+        }
+        
+        setCurrentView('dashboard');
+        setIsLoaded(true);
+        return;
+      }
+
+      // 2. Normal User Flow
       if (user) {
         // Fetch Profile
         const userDoc = await getDoc(doc(db, "usuarios", user.uid));
@@ -88,7 +129,7 @@ export default function App() {
           where("userId", "==", user.uid)
         );
 
-        const unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
+        unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
           const foods: FoodEntry[] = [];
           const todayStart = new Date();
           todayStart.setHours(0, 0, 0, 0);
@@ -108,9 +149,6 @@ export default function App() {
         });
 
         setIsLoaded(true);
-        return () => {
-          unsubscribeSnapshot();
-        };
       } else {
         setUserProfile(null);
         setDailyFoods([]);
@@ -119,7 +157,57 @@ export default function App() {
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+    };
+  }, []);
+
+  // Listen for admin data modifications (foods added/deleted locally)
+  useEffect(() => {
+    const handleAdminDataChange = () => {
+      if (localStorage.getItem('adminLoggedIn') === 'true') {
+        const storedFoods = localStorage.getItem('adminDailyFoods');
+        if (storedFoods) {
+          try {
+            setDailyFoods(JSON.parse(storedFoods));
+          } catch (e) {
+            setDailyFoods([]);
+          }
+        }
+      }
+    };
+    window.addEventListener('admin-data-changed', handleAdminDataChange);
+    return () => window.removeEventListener('admin-data-changed', handleAdminDataChange);
+  }, []);
+
+  // Load foods database & handle custom admin foods
+  useEffect(() => {
+    const loadFoods = () => {
+      const q = query(collection(db, "foods"));
+      return onSnapshot(q, (snapshot) => {
+        const dbFoods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const adminFoods = JSON.parse(localStorage.getItem('adminFoodsList') || '[]');
+        setFoodsList([...dbFoods, ...adminFoods]);
+      }, (error) => {
+        console.error("Error fetching foods:", error);
+        const adminFoods = JSON.parse(localStorage.getItem('adminFoodsList') || '[]');
+        setFoodsList(adminFoods);
+      });
+    };
+
+    let unsubscribe = loadFoods();
+
+    const handleAdminFoodsUpdate = () => {
+      if (unsubscribe) unsubscribe();
+      unsubscribe = loadFoods();
+    };
+
+    window.addEventListener('admin-foods-updated', handleAdminFoodsUpdate);
+    return () => {
+      if (unsubscribe) unsubscribe();
+      window.removeEventListener('admin-foods-updated', handleAdminFoodsUpdate);
+    };
   }, []);
 
   const handleViewChange = (view: View) => {
@@ -133,6 +221,13 @@ export default function App() {
   const handleLogout = async () => {
     playClick();
     try {
+      if (localStorage.getItem('adminLoggedIn') === 'true') {
+        localStorage.removeItem('adminLoggedIn');
+        localStorage.removeItem('adminProfile');
+        setUserProfile(null);
+        setCurrentView('auth-landing');
+        return;
+      }
       await signOut(auth);
       setUserProfile(null);
       setCurrentView('auth-landing');
@@ -169,7 +264,7 @@ export default function App() {
           <Login 
             onBack={() => setCurrentView('auth-landing')} 
             onComplete={(data) => {
-              setUserProfile({ ...data, uid: auth.currentUser?.uid });
+              setUserProfile({ ...data, uid: data.uid || auth.currentUser?.uid });
               setCurrentView('dashboard');
             }} 
           />
@@ -310,7 +405,7 @@ export default function App() {
                     </button>
                   )}
                   <Onboarding onComplete={(data) => {
-                    setUserProfile({ ...data, uid: auth.currentUser?.uid });
+                    setUserProfile({ ...data, uid: data.uid || auth.currentUser?.uid });
                     handleViewChange('dashboard');
                   }} />
                 </div>
@@ -326,6 +421,7 @@ export default function App() {
                   userProfile={userProfile} 
                   dailyFoods={dailyFoods} 
                   onFoodAdded={() => {}} 
+                  foodsList={foodsList}
                 />
               )}
               {currentView === 'recipes' && <Recipes />}
@@ -333,7 +429,13 @@ export default function App() {
               {currentView === 'profile' && userProfile && (
                 <Profile 
                   userProfile={userProfile} 
-                  onUpdate={(data) => setUserProfile({ ...userProfile, ...data })} 
+                  onUpdate={(data) => {
+                    const updated = { ...userProfile, ...data };
+                    setUserProfile(updated);
+                    if (localStorage.getItem('adminLoggedIn') === 'true') {
+                      localStorage.setItem('adminProfile', JSON.stringify(updated));
+                    }
+                  }} 
                 />
               )}
             </motion.div>

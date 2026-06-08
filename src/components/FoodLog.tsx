@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, 
@@ -55,18 +55,49 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
 
   // Filtering logic
   const filteredFoods = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+    if (!searchQuery.trim() || !foodsList) return [];
     return foodsList.filter(food => 
       food.name.toLowerCase().includes(searchQuery.toLowerCase())
     ).slice(0, 5);
   }, [searchQuery, foodsList]);
 
   const addFoodToLog = async (food: any) => {
-    if (!auth.currentUser) return;
+    const isAdmin = localStorage.getItem('adminLoggedIn') === 'true';
+    if (!auth.currentUser && !isAdmin) return;
     playClick();
+
+    if (isAdmin) {
+      const storedFoods = localStorage.getItem('adminDailyFoods');
+      let currentFoods: FoodEntry[] = [];
+      if (storedFoods) {
+        try {
+          currentFoods = JSON.parse(storedFoods);
+        } catch (e) {}
+      }
+      const newEntry: FoodEntry = {
+        id: 'admin_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        name: food.name,
+        calories: Number(food.calories),
+        protein: Number(food.protein),
+        carbs: Number(food.carbs),
+        fats: Number(food.fats),
+        mealType: selectedMeal,
+        timestamp: {
+          toDate: () => new Date(),
+        },
+        userId: 'admin'
+      };
+      const updatedFoods = [...currentFoods, newEntry];
+      localStorage.setItem('adminDailyFoods', JSON.stringify(updatedFoods));
+      window.dispatchEvent(new Event('admin-data-changed'));
+      playSuccess();
+      setSearchQuery('');
+      return;
+    }
+
     try {
       await addDoc(collection(db, 'regimen_alimenticio'), {
-        userId: auth.currentUser.uid,
+        userId: auth.currentUser?.uid,
         name: food.name,
         calories: Number(food.calories),
         protein: Number(food.protein),
@@ -87,13 +118,41 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
     e.preventDefault();
     if (!newFood.name || !newFood.calories) return;
     playClick();
+
+    const isAdmin = localStorage.getItem('adminLoggedIn') === 'true';
+    const newFoodItem = {
+      name: newFood.name,
+      calories: Number(newFood.calories),
+      protein: Number(newFood.protein || 0),
+      carbs: Number(newFood.carbs || 0),
+      fats: Number(newFood.fats || 0),
+    };
+
+    if (isAdmin) {
+      const storedFoods = localStorage.getItem('adminFoodsList');
+      let currentFoods: any[] = [];
+      if (storedFoods) {
+        try {
+          currentFoods = JSON.parse(storedFoods);
+        } catch (e) {}
+      }
+      const newItem = {
+        id: 'admin_food_' + Date.now(),
+        ...newFoodItem,
+        createdAt: new Date().toISOString()
+      };
+      localStorage.setItem('adminFoodsList', JSON.stringify([...currentFoods, newItem]));
+      window.dispatchEvent(new Event('admin-foods-updated'));
+      
+      playSuccess();
+      setShowAddForm(false);
+      setNewFood({ name: '', calories: '', protein: '', carbs: '', fats: '' });
+      return;
+    }
+
     try {
       await addDoc(collection(db, 'foods'), {
-        name: newFood.name,
-        calories: Number(newFood.calories),
-        protein: Number(newFood.protein || 0),
-        carbs: Number(newFood.carbs || 0),
-        fats: Number(newFood.fats || 0),
+        ...newFoodItem,
         createdAt: serverTimestamp()
       });
       playSuccess();
@@ -106,6 +165,20 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
 
   const handleDelete = async (id: string) => {
     playClick();
+    const isAdmin = localStorage.getItem('adminLoggedIn') === 'true';
+    if (isAdmin) {
+      const storedFoods = localStorage.getItem('adminDailyFoods');
+      if (storedFoods) {
+        try {
+          const currentFoods = JSON.parse(storedFoods) as FoodEntry[];
+          const updatedFoods = currentFoods.filter(f => f.id !== id);
+          localStorage.setItem('adminDailyFoods', JSON.stringify(updatedFoods));
+          window.dispatchEvent(new Event('admin-data-changed'));
+        } catch (e) {}
+      }
+      return;
+    }
+
     try {
       await deleteDoc(doc(db, 'regimen_alimenticio', id));
     } catch (e) {

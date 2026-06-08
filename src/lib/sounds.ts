@@ -5,17 +5,39 @@ const createSound = (src: string, volume: number) => {
   return new Howl({
     src: [src],
     volume: volume,
+    html5: true, // Use HTML5 Audio to avoid some CORS issues with Web Audio API
     onloaderror: () => console.warn(`Sound failed to load: ${src}`),
     onplayerror: () => console.warn(`Sound failed to play: ${src}`)
   });
 };
 
-const clickSound = createSound('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3', 0.5);
-const successSound = createSound('https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3', 0.3);
-const transitionSound = createSound('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3', 0.2);
-const errorSound = createSound('https://assets.mixkit.co/active_storage/sfx/2572/2572-preview.mp3', 0.3);
+// Using more reliable CDN-like links for sounds
+const clickSound = createSound('https://raw.githubusercontent.com/codeniko/simple-react-sound-samples/master/src/assets/click.mp3', 0.5);
+const successSound = createSound('https://raw.githubusercontent.com/codeniko/simple-react-sound-samples/master/src/assets/success.mp3', 0.3);
+const transitionSound = createSound('https://raw.githubusercontent.com/codeniko/simple-react-sound-samples/master/src/assets/click.mp3', 0.2); // Fallback to click
+const errorSound = createSound('https://raw.githubusercontent.com/codeniko/simple-react-sound-samples/master/src/assets/error.mp3', 0.3);
 
-export const playClick = () => { try { clickSound.play(); } catch(e) {} };
-export const playSuccess = () => { try { successSound.play(); } catch(e) {} };
-export const playTransition = () => { try { transitionSound.play(); } catch(e) {} };
-export const playError = () => { try { errorSound.play(); } catch(e) {} };
+export const playClick = () => { 
+  try { 
+    if (clickSound.state() === 'loaded') clickSound.play(); 
+    else clickSound.load();
+  } catch(e) {} 
+};
+export const playSuccess = () => { 
+  try { 
+    if (successSound.state() === 'loaded') successSound.play(); 
+    else successSound.load();
+  } catch(e) {} 
+};
+export const playTransition = () => { 
+  try { 
+    if (transitionSound.state() === 'loaded') transitionSound.play(); 
+    else transitionSound.load();
+  } catch(e) {} 
+};
+export const playError = () => { 
+  try { 
+    if (errorSound.state() === 'loaded') errorSound.play(); 
+    else errorSound.load();
+  } catch(e) {} 
+};

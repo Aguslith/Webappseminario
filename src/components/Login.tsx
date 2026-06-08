@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, ChevronLeft, Loader2 } from 'lucide-react';
 import { playClick } from '../lib/sounds';
@@ -22,6 +22,35 @@ export default function Login({ onComplete, onBack }: LoginProps) {
     playClick();
     setLoading(true);
     setError(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    if ((cleanEmail === 'admin' || cleanEmail === 'admin@admin.com') && password === 'admin') {
+      const adminData = {
+        uid: 'admin',
+        nombre: 'Administrador',
+        apellido: 'Sistema',
+        email: 'admin@admin.com',
+        edad: '30',
+        peso: '80',
+        altura: '180',
+        pesoIdeal: '75',
+        alergias: [],
+        role: 'admin'
+      };
+      
+      localStorage.setItem('adminLoggedIn', 'true');
+      localStorage.setItem('adminProfile', JSON.stringify(adminData));
+      
+      if (!localStorage.getItem('adminDailyFoods')) {
+        localStorage.setItem('adminDailyFoods', JSON.stringify([]));
+      }
+      
+      setTimeout(() => {
+        onComplete(adminData);
+        setLoading(false);
+      }, 500);
+      return;
+    }
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -66,12 +95,12 @@ export default function Login({ onComplete, onBack }: LoginProps) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <div className="flex flex-col gap-2">
             <label className="font-semibold text-xs text-on-surface ml-1 uppercase tracking-wider flex items-center gap-2">
-              <Mail size={14} className="text-primary" /> Correo Electrónico
+              <Mail size={14} className="text-primary" /> Usuario / Correo Electrónico
             </label>
             <input 
               className="w-full px-5 py-4 bg-surface-container-highest border-none rounded-xl focus:ring-1 focus:ring-primary/30 focus:bg-surface-container-lowest transition-all placeholder:text-stone-400" 
-              placeholder="tu@email.com" 
-              type="email" 
+              placeholder="tu@email.com o admin" 
+              type="text" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -109,10 +138,23 @@ export default function Login({ onComplete, onBack }: LoginProps) {
           </button>
         </form>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center flex flex-col gap-4">
           <p className="text-xs text-on-surface-variant">
             ¿Olvidaste tu contraseña? <a href="#" className="text-primary font-bold hover:underline">Recupérala aquí</a>
           </p>
+
+          <div className="pt-4 border-t border-surface-container-high">
+            <button
+              onClick={() => {
+                playClick();
+                setEmail('admin');
+                setPassword('admin');
+              }}
+              className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-primary-dark transition-colors bg-primary/10 hover:bg-primary/20 px-4 py-2.5 rounded-full shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              🔑 Rellenar Acceso Admin
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>
