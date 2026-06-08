@@ -105,6 +105,8 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
     if (!auth.currentUser && !isAdmin) return;
     playClick();
 
+    const fatsVal = food.fats !== undefined ? food.fats : (food.fat !== undefined ? food.fat : 0);
+
     if (isAdmin) {
       const storedFoods = localStorage.getItem('adminDailyFoods');
       let currentFoods: FoodEntry[] = [];
@@ -116,10 +118,10 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
       const newEntry: FoodEntry = {
         id: 'admin_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
         name: food.name,
-        calories: Number(food.calories),
-        protein: Number(food.protein),
-        carbs: Number(food.carbs),
-        fats: Number(food.fats),
+        calories: Number(food.calories) || 0,
+        protein: Number(food.protein) || 0,
+        carbs: Number(food.carbs) || 0,
+        fats: Number(fatsVal) || 0,
         mealType: selectedMeal,
         timestamp: {
           toDate: () => new Date(),
@@ -138,10 +140,10 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
       await addDoc(collection(db, 'regimen_alimenticio'), {
         userId: auth.currentUser?.uid,
         name: food.name,
-        calories: Number(food.calories),
-        protein: Number(food.protein),
-        carbs: Number(food.carbs),
-        fats: Number(food.fats),
+        calories: Number(food.calories) || 0,
+        protein: Number(food.protein) || 0,
+        carbs: Number(food.carbs) || 0,
+        fats: Number(fatsVal) || 0,
         mealType: selectedMeal,
         timestamp: serverTimestamp()
       });
@@ -237,12 +239,12 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
 
   const groupedFoods = meals.map(meal => {
     const items = dailyFoods.filter(f => f.mealType === meal.id);
-    const totalCals = items.reduce((acc, curr) => acc + curr.calories, 0);
+    const totalCals = items.reduce((acc, curr) => acc + (Number(curr.calories) || 0), 0);
     return { ...meal, items, totalCalories: totalCals };
   });
 
-  const totalCals = dailyFoods.reduce((acc, curr) => acc + curr.calories, 0);
-  const totalProt = dailyFoods.reduce((acc, curr) => acc + curr.protein, 0);
+  const totalCals = dailyFoods.reduce((acc, curr) => acc + (Number(curr.calories) || 0), 0);
+  const totalProt = dailyFoods.reduce((acc, curr) => acc + (Number(curr.protein) || 0), 0);
 
   return (
     <div className="space-y-8 sm:space-y-12 pb-20 px-2 sm:px-0">

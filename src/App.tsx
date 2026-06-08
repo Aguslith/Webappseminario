@@ -26,7 +26,7 @@ import { cn } from './lib/utils';
 import { playClick, playTransition } from './lib/sounds';
 import { onAuthStateChanged, signOut, signInAnonymously } from "firebase/auth";
 import { auth, db } from "./lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs, Timestamp, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, Timestamp, onSnapshot, addDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
 // Views
 import Onboarding from './components/Onboarding';
@@ -219,15 +219,38 @@ export default function App() {
     const loadFoods = () => {
       const q = query(collection(db, "foods"));
       return onSnapshot(q, (snapshot) => {
-        const dbFoods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const dbFoods = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const fatsVal = data.fats !== undefined ? data.fats : (data.fat !== undefined ? data.fat : 0);
+          return {
+            id: doc.id,
+            name: data.name || '',
+            calories: Number(data.calories || 0),
+            protein: Number(data.protein || 0),
+            carbs: Number(data.carbs || 0),
+            fats: Number(fatsVal || 0),
+            category: data.category || 'Otros'
+          };
+        });
         const adminFoods = JSON.parse(localStorage.getItem('adminFoodsList') || '[]');
+        const normalizedAdmin = adminFoods.map((af: any) => {
+          const fatsVal = af.fats !== undefined ? af.fats : (af.fat !== undefined ? af.fat : 0);
+          return {
+            ...af,
+            name: af.name || '',
+            calories: Number(af.calories || 0),
+            protein: Number(af.protein || 0),
+            carbs: Number(af.carbs || 0),
+            fats: Number(fatsVal || 0)
+          };
+        });
         
         // If Firestore succeeds but is empty, merge DEFAULT_FOODS
         const baseFoods = (dbFoods.length > 0 ? dbFoods : DEFAULT_FOODS) as any[];
         
         // Merge without repeating names
         const combined = [...baseFoods] as any[];
-        adminFoods.forEach((af: any) => {
+        normalizedAdmin.forEach((af: any) => {
           if (!combined.some(cf => cf.name.toLowerCase() === af.name.toLowerCase())) {
             combined.push(af);
           }
@@ -237,9 +260,20 @@ export default function App() {
       }, (error) => {
         console.error("Error fetching foods:", error);
         const adminFoods = JSON.parse(localStorage.getItem('adminFoodsList') || '[]');
+        const normalizedAdmin = adminFoods.map((af: any) => {
+          const fatsVal = af.fats !== undefined ? af.fats : (af.fat !== undefined ? af.fat : 0);
+          return {
+            ...af,
+            name: af.name || '',
+            calories: Number(af.calories || 0),
+            protein: Number(af.protein || 0),
+            carbs: Number(af.carbs || 0),
+            fats: Number(fatsVal || 0)
+          };
+        });
         
         const combined = [...DEFAULT_FOODS] as any[];
-        adminFoods.forEach((af: any) => {
+        normalizedAdmin.forEach((af: any) => {
           if (!combined.some(cf => cf.name.toLowerCase() === af.name.toLowerCase())) {
             combined.push(af);
           }
@@ -533,11 +567,18 @@ export default function App() {
               {currentView === 'profile' && userProfile && (
                 <Profile 
                   userProfile={userProfile} 
-                  onUpdate={(data) => {
+                  onUpdate={async (data) => {
                     const updated = { ...userProfile, ...data };
                     setUserProfile(updated);
                     if (localStorage.getItem('adminLoggedIn') === 'true') {
                       localStorage.setItem('adminProfile', JSON.stringify(updated));
+                    } else if (auth.currentUser) {
+                      try {
+                        const userRef = doc(db, "usuarios", auth.currentUser.uid);
+                        await setDoc(userRef, { pesoIdeal: data.pesoIdeal }, { merge: true });
+                      } catch (error) {
+                        console.error("Error updating profile in Firestore:", error);
+                      }
                     }
                   }} 
                 />

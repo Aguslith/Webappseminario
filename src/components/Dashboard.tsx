@@ -37,10 +37,10 @@ export default function Dashboard({ userProfile, dailyFoods }: DashboardProps) {
   
   const targetCalories = peso > pesoIdeal ? Math.round(maintenanceCals - 500) : Math.round(maintenanceCals);
   
-  const consumedCalories = dailyFoods.reduce((acc, food) => acc + food.calories, 0);
-  const consumedProtein = dailyFoods.reduce((acc, food) => acc + food.protein, 0);
-  const consumedCarbs = dailyFoods.reduce((acc, food) => acc + food.carbs, 0);
-  const consumedFats = dailyFoods.reduce((acc, food) => acc + food.fats, 0);
+  const consumedCalories = dailyFoods.reduce((acc, food) => acc + (Number(food.calories) || 0), 0);
+  const consumedProtein = dailyFoods.reduce((acc, food) => acc + (Number(food.protein) || 0), 0);
+  const consumedCarbs = dailyFoods.reduce((acc, food) => acc + (Number(food.carbs) || 0), 0);
+  const consumedFats = dailyFoods.reduce((acc, food) => acc + (Number(food.fats) || 0), 0);
 
   const remainingCalories = Math.max(0, targetCalories - consumedCalories);
   const caloriePercent = Math.min(100, (consumedCalories / targetCalories) * 100);
