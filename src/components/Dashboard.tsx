@@ -37,10 +37,10 @@ export default function Dashboard({ userProfile, dailyFoods }: DashboardProps) {
   
   const targetCalories = peso > pesoIdeal ? Math.round(maintenanceCals - 500) : Math.round(maintenanceCals);
   
-  const consumedCalories = dailyFoods.reduce((acc, food) => acc + (Number(food.calories) || 0), 0);
-  const consumedProtein = dailyFoods.reduce((acc, food) => acc + (Number(food.protein) || 0), 0);
-  const consumedCarbs = dailyFoods.reduce((acc, food) => acc + (Number(food.carbs) || 0), 0);
-  const consumedFats = dailyFoods.reduce((acc, food) => acc + (Number(food.fats) || 0), 0);
+  const consumedCalories = Math.round(dailyFoods.reduce((acc, food) => acc + (Number(food.calories) || 0), 0));
+  const consumedProtein = parseFloat(dailyFoods.reduce((acc, food) => acc + (Number(food.protein) || 0), 0).toFixed(1));
+  const consumedCarbs = parseFloat(dailyFoods.reduce((acc, food) => acc + (Number(food.carbs) || 0), 0).toFixed(1));
+  const consumedFats = parseFloat(dailyFoods.reduce((acc, food) => acc + (Number(food.fats) || 0), 0).toFixed(1));
 
   const remainingCalories = Math.max(0, targetCalories - consumedCalories);
   const caloriePercent = Math.min(100, (consumedCalories / targetCalories) * 100);
@@ -238,35 +238,55 @@ export default function Dashboard({ userProfile, dailyFoods }: DashboardProps) {
         {/* Macros */}
         <section className="col-span-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {[
-            { label: 'Proteína', value: `${consumedProtein}g`, target: '115g', percent: Math.min(100, (consumedProtein/115)*100), icon: Utensils, color: 'primary' },
-            { label: 'Carbohidratos', value: `${consumedCarbs}g`, target: '250g', percent: Math.min(100, (consumedCarbs/250)*100), icon: Wheat, color: 'secondary' },
-            { label: 'Grasas', value: `${consumedFats}g`, target: '70g', percent: Math.min(100, (consumedFats/70)*100), icon: Droplet, color: 'tertiary' },
-          ].map((macro, i) => (
-            <motion.div 
-              key={macro.label} 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 + (i * 0.1) }}
-              className="bg-white rounded-[2rem] p-6 sm:p-8 editorial-shadow border border-surface-container-high group hover:border-primary transition-all"
-            >
-              <div className="flex justify-between items-start mb-6 sm:mb-8">
-                <div className={cn("w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 duration-500", `bg-${macro.color}-container`)}>
-                  <macro.icon size={24} className={`text-${macro.color}`} />
+            { label: 'Proteína', value: `${consumedProtein}g`, target: '115g', percent: Math.min(100, (consumedProtein/115)*100), icon: Utensils, color: 'primary' as const },
+            { label: 'Carbohidratos', value: `${consumedCarbs}g`, target: '250g', percent: Math.min(100, (consumedCarbs/250)*100), icon: Wheat, color: 'secondary' as const },
+            { label: 'Grasas', value: `${consumedFats}g`, target: '70g', percent: Math.min(100, (consumedFats/70)*100), icon: Droplet, color: 'tertiary' as const },
+          ].map((macro, i) => {
+            const colorClasses = {
+              primary: {
+                bg: 'bg-primary',
+                text: 'text-primary',
+                container: 'bg-primary-container',
+              },
+              secondary: {
+                bg: 'bg-secondary',
+                text: 'text-secondary',
+                container: 'bg-secondary-container',
+              },
+              tertiary: {
+                bg: 'bg-tertiary',
+                text: 'text-tertiary',
+                container: 'bg-tertiary-container',
+              },
+            };
+            const classes = colorClasses[macro.color];
+            return (
+              <motion.div 
+                key={macro.label} 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + (i * 0.1) }}
+                className="bg-white rounded-[2rem] p-6 sm:p-8 editorial-shadow border border-surface-container-high group hover:border-primary transition-all"
+              >
+                <div className="flex justify-between items-start mb-6 sm:mb-8">
+                  <div className={cn("w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 duration-500", classes.container)}>
+                    <macro.icon size={24} className={classes.text} />
+                  </div>
+                  <span className={cn("text-[10px] font-black px-3 py-1 rounded-full", classes.container, classes.text)}>{Math.round(macro.percent)}%</span>
                 </div>
-                <span className={cn("text-[10px] font-black px-3 py-1 rounded-full", `bg-${macro.color}-container text-${macro.color}`)}>{Math.round(macro.percent)}%</span>
-              </div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">{macro.label}</p>
-              <p className="text-2xl sm:text-4xl font-black text-on-surface tracking-tighter">{macro.value} <span className="text-sm font-normal text-on-surface-variant tracking-normal">/ {macro.target}</span></p>
-              <div className="mt-6 sm:mt-8 h-3 sm:h-4 bg-surface-container-high rounded-full overflow-hidden p-1 shadow-inner">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${macro.percent}%` }}
-                  transition={{ duration: 1.5, delay: 0.8 + (i * 0.1) }}
-                  className={cn("h-full rounded-full shadow-sm", `bg-${macro.color}`)} 
-                />
-              </div>
-            </motion.div>
-          ))}
+                <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant mb-2">{macro.label}</p>
+                <p className="text-2xl sm:text-4xl font-black text-on-surface tracking-tighter">{macro.value} <span className="text-sm font-normal text-on-surface-variant tracking-normal">/ {macro.target}</span></p>
+                <div className="mt-6 sm:mt-8 h-3 sm:h-4 bg-surface-container-high rounded-full overflow-hidden p-1 shadow-inner">
+                  <motion.div 
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${macro.percent}%` }}
+                    transition={{ duration: 1.5, delay: 0.8 + (i * 0.1) }}
+                    className={cn("h-full rounded-full shadow-sm", classes.bg)} 
+                  />
+                </div>
+              </motion.div>
+            );
+          })}
         </section>
       </div>
     </div>

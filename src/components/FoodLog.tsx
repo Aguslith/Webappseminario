@@ -239,12 +239,12 @@ export default function FoodLog({ userProfile, dailyFoods, onFoodAdded, foodsLis
 
   const groupedFoods = meals.map(meal => {
     const items = dailyFoods.filter(f => f.mealType === meal.id);
-    const totalCals = items.reduce((acc, curr) => acc + (Number(curr.calories) || 0), 0);
+    const totalCals = Math.round(items.reduce((acc, curr) => acc + (Number(curr.calories) || 0), 0));
     return { ...meal, items, totalCalories: totalCals };
   });
 
-  const totalCals = dailyFoods.reduce((acc, curr) => acc + (Number(curr.calories) || 0), 0);
-  const totalProt = dailyFoods.reduce((acc, curr) => acc + (Number(curr.protein) || 0), 0);
+  const totalCals = Math.round(dailyFoods.reduce((acc, curr) => acc + (Number(curr.calories) || 0), 0));
+  const totalProt = parseFloat(dailyFoods.reduce((acc, curr) => acc + (Number(curr.protein) || 0), 0).toFixed(1));
 
   return (
     <div className="space-y-8 sm:space-y-12 pb-20 px-2 sm:px-0">
